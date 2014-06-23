@@ -82,6 +82,18 @@
     An http proxy to use for downloading software. By default the install script won't use a proxy.
     Use the format http://host:port.
 
+.PARAMETER localRuby
+	If this path parameter is specified, the ruby installation kit wont be downloaded from the Internet	but instead
+	will be specified locally
+
+.PARAMETER localMCollective
+	If this path parameter is specified, the MCollective installation kit wont be downloaded from the Internet	but instead
+	will be specified locally
+
+.PARAMETER localsshd
+	If this path parameter is specified, the cygwin sshd installation kit wont be downloaded from the Internet	but instead
+	will be specified locally
+	
 .PARAMETER skipRuby
     This is a switch parameter that allows the user to skip downloading and installing Ruby. 
     This is useful for testing, when the caller is sure Ruby is already installed in the directory specified by the -rubyInstallLocation parameter.
@@ -167,6 +179,9 @@ param (
     # parameters used for setting up sshd
     [string] $sshdCygwinDir = $(if (-not $upgrade) {  'c:\openshift\cygwin' }),
     [string] $sshdListenAddress = '0.0.0.0',
+	[string] $localsshd = '',
+	[string] $localMCollective = '',
+	[string] $localRuby = '',
     [int] $sshdPort = 22,
     # parameters used for proxy settings
     [string] $proxy = $null,
@@ -365,13 +380,13 @@ Setup-GAC($binLocation)
 # setup ruby
 if ($skipRuby -eq $false)
 {
-    Setup-Ruby $rubyDownloadLocation $rubyInstallLocation
+	Setup-Ruby $rubyDownloadLocation $rubyInstallLocation $localRuby
 }
 
 Write-Host 'Setting up SSHD ...'
 if ($skipCygwin -eq $false)
 {
-    Setup-SSHD $sshdCygwinDir  $sshdListenAddress $sshdPort
+	Setup-SSHD $sshdCygwinDir  $sshdListenAddress $sshdPort $localsshd
 }
 $cygpath = (Join-Path $sshdCygwinDir 'installation\bin\cygpath.exe')
 $chmod = (Join-Path $sshdCygwinDir 'installation\bin\chmod.exe')
@@ -380,7 +395,7 @@ $chmod = (Join-Path $sshdCygwinDir 'installation\bin\chmod.exe')
 Write-Host 'Setting up MCollective ...'
 if ($skipMCollective -eq $false)
 {
-    Setup-MCollective 'c:\openshift\mcollective' (Join-Path $sshdCygwinDir 'installation') $rubyInstallLocation
+	Setup-MCollective 'c:\openshift\mcollective' (Join-Path $sshdCygwinDir 'installation') $rubyInstallLocation $localMCollective
 }
 Configure-MCollective $mcollectiveActivemqServer $mcollectiveActivemqPort $mcollectiveActivemqUser $mcollectiveActivemqPassword 'c:\openshift\mcollective' $binLocation $rubyInstallLocation $mcollectivePskPlugin
 

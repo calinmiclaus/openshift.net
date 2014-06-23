@@ -28,13 +28,13 @@ function Configure-MCollective($userActivemqServer, $userActivemqPort, $userActi
     Run-RubyCommand $rubyDir "powershell ${arguments}" $mcollectiveInstallDir
 }
 
-function Setup-SSHD($cygwinDir, $listenAddress, $port)
+function Setup-SSHD($cygwinDir, $listenAddress, $port, $localsshdPath)
 {
     Cleanup-Directory $cygwinDir
 
     $sshdSetupScript = (Join-Path $currentDir '..\sshd\setup-sshd.ps1')
 
-    $arguments = "-File ${sshdSetupScript} -cygwinDir ${cygwinDir} -listenAddress ${listenAddress} -port ${port}"
+    $arguments = "-File ${sshdSetupScript} -cygwinDir ${cygwinDir} -listenAddress ${listenAddress} -port ${port} -localsshdPath $localsshdPath"
     $sshdSetupProcess = Start-Process -Wait -PassThru -NoNewWindow 'powershell' $arguments
 
     if ($sshdSetupProcess.ExitCode -ne 0)
@@ -119,9 +119,8 @@ function Setup-GlobalEnv($binLocation)
     [System.IO.File]::WriteAllText((Join-Path $envDir 'PATH'), [string]::Join(":", $pathEnvEntries))
 }
 
-function Setup-Ruby($rubyDownloadLocation, $rubyInstallLocation)
+function Setup-Ruby($rubyDownloadLocation, $rubyInstallLocation, $localRubyPath)
 {
-    Write-Host "Downloading ruby setup package from '${rubyDownloadLocation}'"
     $rubySetupPackage = Join-Path $env:TEMP "ruby-setup.exe"
     if ((Test-Path $rubySetupPackage) -eq $true)
     {
@@ -129,16 +128,27 @@ function Setup-Ruby($rubyDownloadLocation, $rubyInstallLocation)
         rm $rubySetupPackage -Force > $null
     }
 
-    if ([string]::IsNullOrWhiteSpace($env:osiProxy))
-    {
-        Invoke-WebRequest $rubyDownloadLocation -OutFile $rubySetupPackage
-    }
-    else
-    {
-        Invoke-WebRequest $rubyDownloadLocation -OutFile $rubySetupPackage -Proxy $env:osiProxy
-    }
+	if ([string]::IsNullOrWhiteSpace($localRubyPath))
+	{
+		if ([string]::IsNullOrWhiteSpace($env:osiProxy))
+		{
+			Write-Host "Downloading ruby setup package from '${rubyDownloadLocation}'"
+			Invoke-WebRequest $rubyDownloadLocation -OutFile $rubySetupPackage
+		    Write-Verbose "Ruby install package downloaded to '${rubySetupPackage}'"
 
-    Write-Verbose "Ruby install package downloaded to '${rubySetupPackage}'"
+		}
+		else
+		{
+			Write-Host "Downloading ruby setup package from '${rubyDownloadLocation}'"
+			Invoke-WebRequest $rubyDownloadLocation -OutFile $rubySetupPackage -Proxy $env:osiProxy
+			Write-Verbose "Ruby install package downloaded to '${rubySetupPackage}'"
+		}
+	}
+	else
+	{
+		$rubySetupPackage = $localRubyPath
+	}
+
 
     Cleanup-Directory $rubyInstallLocation
 

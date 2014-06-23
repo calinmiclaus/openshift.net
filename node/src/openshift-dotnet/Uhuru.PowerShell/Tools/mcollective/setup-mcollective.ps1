@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param (
     [string] $installLocation = 'c:\openshift\mcollective\',
-    [string] $cygwinInstallLocation = 'c:\openshift\cygwin\installation\'
+    [string] $cygwinInstallLocation = 'c:\openshift\cygwin\installation\',
+	[string] $localMCollectivePath = ''
 )
 
 $currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
@@ -43,8 +44,6 @@ $currentDir = split-path $SCRIPT:MyInvocation.MyCommand.Path -parent
 
 $mcollectiveSetupURL = "http://downloads.puppetlabs.com/mcollective/mcollective-2.3.3.tar.gz"
 
-Write-Host "Downloading mcollective setup package from here: " -NoNewline
-Write-Host $mcollectiveSetupURL -ForegroundColor Yellow
 
 $setupPackage = [System.IO.Path]::GetTempFileName() + '.tar.gz'
 
@@ -52,14 +51,24 @@ if ((Test-Path $setupPackage) -eq $true)
 {
     rm $setupPackage -Force > $null
 }
-
-if ([string]::IsNullOrWhiteSpace($env:osiProxy))
+if ([string]::IsNullOrWhiteSpace($localMCollectivePath))
 {
-    Invoke-WebRequest $mcollectiveSetupURL -OutFile $setupPackage
+	if ([string]::IsNullOrWhiteSpace($env:osiProxy))
+	{
+		Write-Host "Downloading mcollective setup package from here: " -NoNewline
+		Write-Host $mcollectiveSetupURL -ForegroundColor Yellow
+		Invoke-WebRequest $mcollectiveSetupURL -OutFile $setupPackage
+	}
+	else
+	{
+		Write-Host "Downloading mcollective setup package from here: " -NoNewline
+		Write-Host $mcollectiveSetupURL -ForegroundColor Yellow
+		Invoke-WebRequest $mcollectiveSetupURL -OutFile $setupPackage -Proxy $env:osiProxy
+	}
 }
 else
 {
-    Invoke-WebRequest $mcollectiveSetupURL -OutFile $setupPackage -Proxy $env:osiProxy
+	$setupPackage = $localMCollectivePath
 }
 
 Write-Verbose 'Looking up binaries from cygwin ...'
